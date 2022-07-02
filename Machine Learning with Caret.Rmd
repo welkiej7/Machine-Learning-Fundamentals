@@ -1,0 +1,223 @@
+---
+title: "Fundamentals of Machine Learning and Cross Validation in Caret Package"
+author: "Onur Tuncay Bal"
+date: '2022-07-01'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Machine Learning with Caret
+
+In this section we will go over the fundamental aspects of the Caret package for machine learning.
+
+Let's work on Diamonds dataset,
+
+Starting with linear modelling
+
+```{r}
+ggplot2::diamonds -> diamonds_data
+lm(price~.,diamonds_data) -> diamonds_model
+predict(diamonds_model,diamonds_data) -> pred
+
+diamonds_data$price - pred -> errors
+
+#RMSE = 
+rmse <- sqrt(mean(errors^2))
+```
+
+## Out of sample error measures.
+
+Predicting over the new data. We will focus on the train-test split. This is more accurate. Pick models that perform well on new data
+
+```{r}
+set.seed(42)
+rows <- sample(nrow(diamonds_data))
+##shuffle
+diamonds_data <- diamonds_data[rows,]
+```
+
+After shuffling the data lets use a split function to create our training set.
+
+```{r}
+diamonds_split_rule_80_20 <- round(nrow(diamonds_data)*0.8)
+
+diamonds_training <-  diamonds_data[1:diamonds_split_rule_80_20,]
+
+diamonds_test <- diamonds_data[(diamonds_split_rule_80_20+1):nrow(diamonds_data),]
+```
+
+We can now predict on the dataset,
+
+```{r}
+training_model_diamonds <- lm(price~.,diamonds_training)
+predicted <- predict(training_model_diamonds,diamonds_test)
+```
+Let's find out how well our model performed,
+
+```{r}
+#RMSE
+errors_diamond_prediction <-  diamonds_test$price - predicted
+
+sqrt(mean(errors_diamond_prediction^2)) -> rmse_diamonds
+```
+
+## Cross Validation
+
+Cross validation is much better than train-test split, because tt-split can be fragile because of the outliers. 
+### Bootstrap Validation
+
+A different type of cross validation technique which can be accessible via caret package. Here you can see the fundamental code for cross validation in caret package,
+
+```{r}
+require(caret)
+model_diamonds_caret <- train(price~.,diamonds_data,method = "lm", trControl = trainControl(method ="cv",number = 10, verboseIter = TRUE))
+```
+Don't forget to use the traincontrol function and alter it for our purpose. Let's check our results,
+
+```{r}
+model_diamonds_caret
+```
+
+We can create the same model with 5 folds cross-validation
+
+```{r}
+fold_5_diamonds_caret <- train(price~.,diamonds_data,method = "lm", trControl = trainControl(method = "cv",number = 5, verboseIter = TRUE))
+print(fold_5_diamonds_caret)
+```
+We can increase the repeats, to repeat the process with 5 cross validation schemes and find the lowers R-Squared value.
+
+Nonetheless we should remember to change the method to "repeatedcv"
+
+```{r}
+fold_5_repeat_5_diamonds_caret <- train(price~.,diamonds_data,method = "lm", trControl = trainControl(method = "repeatedcv",number = 5,repeats = 5,verboseIter = TRUE))
+fold_5_repeat_5_diamonds_caret
+```
+We can still use the predict function over the diamonds dataset,
+
+```{r}
+
+##Manual RMSE
+diamonds_data$pprice <- predict(fold_5_repeat_5_diamonds_caret,diamonds_data)
+
+errors_diamonds <- diamonds_data$pprice - diamonds_data$price
+
+sqrt(mean(errors_diamonds^2)) -> mrmse
+mrmse
+```
+## Logistic Regression in Caret Package over Sonar Data
+Logistic regression is rather different from linear models, we can classify them under generalized linear models. Goal is here to determine the response variable belongs to the some category. Let's load the Sonar data and check its structure,
+
+```{r}
+Sonar <- load("/Users/onurtuncaybal/Documents/Studies/Studies Summer 2022/Machine Learning with R /Machine Learning with R/Data/Sonar.RData")
+```
+Now let's divide the dataset in to 60-40 split. 
+
+```{r}
+rbind(sonar_train,sonar_test) -> sonar
+#Shuffle
+sampled_rows <- sample(nrow(sonar))
+sonar <- sonar[sampled_rows,]
+#Split
+split_sonar <- round(nrow(sonar)*0.60)
+
+sonar_train <- sonar[1:split_sonar,]
+sonar_test <- sonar[(split_sonar+1):nrow(sonar),]
+
+
+```
+
+Let's use the base package without the algorithm of the caret,
+
+```{r}
+sonar_model<-glm(Class~.,sonar_train,family = "binomial")
+sonar_test$pred <- predict(sonar_model,sonar_test,type = "response")
+```
+
+We can create a confusion matrix to see how well our model performed, since these are probability values we should classify the probabilities. 
+
+
+### Confusion Matrix
+
+```{r}
+sonar_test$pred <- ifelse(sonar_test$pred >= 0.5,"M","R")
+sonar_test$pred <- as.factor(sonar_test$pred)
+confusionMatrix(sonar_test$pred,sonar_test$Class)
+
+```
+
+
+As you can see our model has a prediction accuracy of 31.33%. Nonetheless let's use different classfication thresholds for our confusion matrix, and let's create different confusion matrices. 
+
+#### Different Thresholds
+We can create one where the predicted probabilities are above 0.9, they will take the value M and R otherwise. 
+
+```{r}
+sonar_test$pred <- predict(sonar_model,sonar_test,type = "response")
+
+sonar_test$pred <- as.factor(ifelse(sonar_test$pred >= 0.9, "M","R"))
+
+confusionMatrix(sonar_test$pred,sonar_test$Class)
+```
+
+We can see that the accuracy of our model is increased. Nonetheless, it is still not any good than just predicting randomly. We can alter it for the 0.1 threshold too,
+
+```{r}
+sonar_test$pred <- predict(sonar_model,sonar_test,type = "response")
+sonar_test$pred <- as.factor(ifelse(sonar_test$pred>=0.1,"M","R"))
+
+confusionMatrix(sonar_test$pred,sonar_test$Class)
+
+
+
+```
+
+#### Evaluating the Classification Thresholds: ROC Curve
+
+
+Solutions for the different threshold probabilities and their impact. We can use ROC curves for this,
+
+```{r}
+require(caTools)
+sonar_test$pred <- predict(sonar_model,sonar_test,type = "response")
+colAUC(sonar_test$pred,sonar_test$Class,plotROC = TRUE)
+```
+In here, we can see that colAUC function calculates the possible thresholds and their accuracy values, increased sensitivity means increased true positive rate. Probability of the false alarm, (1- Specificity) means that the false negatives. 
+
+Area under the ROC-Curve, AUC. We can evaluate the model performance for the Cross-Validation method with caret package. 
+
+```{r, echo = FALSE}
+require(caret)
+sonar_model <- train(Class~.,sonar_train,method = "glm",trControl = trainControl(method = "repeatedcv",
+                                                                                 number = 10,
+                                                                                 repeats = 10,
+                                                                                 summaryFunction = twoClassSummary,
+                                                                                 classProbs = TRUE,
+                                                                                 verboseIter = FALSE))
+```
+
+Now we can use the predict function for our 10x10 model,
+
+```{r}
+sonar_test$pred <- predict(sonar_model, sonar_test, type = "prob")
+sonar_test$pred <- as.factor(ifelse(sonar_test$pred[,1]>=sonar_test$pred[,2],"M","R"))
+```
+We can see the model while using the caret package,
+
+```{r}
+print(sonar_model)
+```
+The ROC value is 0.78. Similarly, we can create a manual confusion matrix.
+
+```{r}
+confusionMatrix(sonar_test$pred,sonar_test$Class)
+```
+Nonetheless, this means that there is a better threshold than 0.5 which ROC Curve found out but we couldn't. It's accuracy is 0.78 for that threshold. Let's link that curve directly to our model.
+
+```{r}
+predict(sonar_model,sonar_test,type = "prob")
+```
+
+
+
