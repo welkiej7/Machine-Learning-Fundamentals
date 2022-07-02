@@ -1,0 +1,91 @@
+---
+title: "Unsupervised Learning with R"
+author: "Onur Tuncay Bal"
+date: '2022-06-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### a General Approach
+
+In this section I will focus on the possible applications of unsupervised machine learning, such as k-means clustering, hierarchical clustering, etc. We can divide unsupervised learning into two structures, first is clustering and the second is dimensionality reduction.
+
+In unsupervised learning, no labels are provided, and the learning algorithm focuses solely on detecting structure in unlabelled input data.Generally there is no single goal in unsupervised learning and the aim is to uncover some sort of pattern from the data.
+
+## k-means clustering
+Aim of the algorithm is to divide the n number of observations in to k number of homogenous clusters. We can denote the function as,
+
+stats::kmeans(x,centers = 4, nstart  =10)
+
+In here we can see that function comes from the base package, stats, divides the numerical data matrix x to 4 centers. nstart is the iteration to improve the returned model.
+We can use Iris dataset and see how k-means algorithm works.
+
+```{r}
+data("iris")
+plot(iris$Sepal.Length,iris$Petal.Length,col = iris$Species, xlab = "Sepal Length",ylab = "Petal Length")
+```
+How does k-means algorithm work ? In here we are adding some random colors, th
+```{r}
+set.seed(12)
+init <-  sample(3,nrow(iris),replace = TRUE)
+plot(iris$Sepal.Length,iris$Petal.Length,col = init)
+```
+# Scaling the Dataset
+
+We have preparing the dataset of training and test.
+```{r}
+iris_scaled <- as.data.frame(scale(iris[,-5]))
+
+training_iris <- iris_scaled[1:round(nrow(iris_scaled)*3/4),]
+
+test_iris <- as.data.frame(iris_scaled[round(nrow(training_iris):nrow(iris_scaled)),])
+```
+
+let's use class package for the algorithm
+
+```{r}
+library(class)
+test_iris$knn <- knn(training_iris,test_iris,class_iris_train,k = 3)
+```
+now let's add the original values from the dataset,
+
+```{r}
+test_iris$labels <- iris$Species[112:150]
+```
+
+We can evaluate our models performance with CrossTable function
+```{r}
+library(gmodels)
+CrossTable(test_iris$knn,test_iris$labels, prop.chisq = FALSE)
+```
+
+
+We can see that our model is successful on the training data with 0.769 percent. Nonetheless, we can improve our model performance, lets start over and this time we will give different values for training set.
+
+```{r}
+require(caTools)
+sample = sample.split(iris, SplitRatio = 2/3)
+iris_train <- subset(iris, sample == TRUE)
+iris_test <-  subset(iris, sample == FALSE)
+class_train_iris <-  iris_train$Species
+
+iris_train <- iris_train[,-5]
+iris_test <-  iris_test[,-5]
+knn(train = iris_train, test = iris_test, cl = class_train_iris, k = 3) -> iris_test$knn
+iris_test$label <-  iris$Species[c(as.numeric(rownames(iris_test)))]
+CrossTable(iris_test$knn,iris_test$label, prop.chisq = FALSE)
+```
+
+We can test accuracy with the caret package too
+```{r}
+require(caret)
+confusionMatrix(iris_test$knn,iris_test$label)
+```
+
+We can see that we are founding with 0.96 percent accuracy. 
+
+
+## Probabilistic Learning-Classification Using Naive Bayes
