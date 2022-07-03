@@ -58,6 +58,24 @@ titanic_model_glm_knn_imputation <-  train(x = select(titanic_selected,!c("Survi
                                                                     number = 5,
                                                                     repeats = 5,
                                                                     verboseIter = TRUE))
+## Different Pre-Processing Steps.
+
+#Common Recipe for Linear Models
+# median_impute -> center -> scale -> fit_glm (order matters!)
+
+
+#We can use different pre-processing as the following.
+
+
+
+sonar_model_pp <- train(x = select(titanic_selected, !c("Survived")),
+                        y = titanic_selected$Survived,
+                        method = "glm",
+                        preProcess = c("medianImpute","center","scale"),
+                        trControl = trainControl(method = "cv",
+                                                 number = 5,
+                                                 verboseIter = TRUE))
+
 
 
 
