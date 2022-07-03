@@ -77,5 +77,23 @@ sonar_model_pp <- train(x = select(titanic_selected, !c("Survived")),
                                                  verboseIter = TRUE))
 
 
+## REMOVING CONSTANT VALUES ! 
+
+#Some values may have a low variance or no variance at all. In such case, removing with caret is a necessity. we can use ,
+
+#"zv" as a function of removing constant variables and,
+#"nzv" to remove nearly constant values
+
+#it can be seen as here. 
+
+sonar_model_pp <- train(x = select(titanic_selected, !c("Survived")),
+                        y = titanic_selected$Survived,
+                        method = "glm",
+                        preProcess = c("nzv","medianImpute","center","scale"),
+                        trControl = trainControl(method = "cv",
+                                                 number = 5,
+                                                 verboseIter = TRUE))
+
+
 
 
