@@ -47,7 +47,7 @@ titanic_model_glm_median_impute <- train(x = select(titanic_selected,!c("Survive
 
 
 ## kNN imputation.
-#Median imputation can be incorret and be biased, thus using kNN imputation much better.
+#Median imputation can be incorret and be biased, thus using kNN imputation much better (depends on the case).
 
 
 titanic_model_glm_knn_imputation <-  train(x = select(titanic_selected,!c("Survived")),
