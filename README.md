@@ -1,2 +1,2 @@
 # Machine-Learning-Fundamentals
-In this library, we will focus on the machine learning methods with caret package.
+a repository focused on caret package and the book hands on machine learning.
